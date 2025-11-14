@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QR Code Generator (SVG)</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Modern QR library (super stable) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+  <style>
+    .qr-preview svg { width: 100%; height: auto; display: block; }
+  </style>
+</head>
+
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+  <main class="w-full max-w-3xl bg-white shadow-lg rounded-lg p-6">
+    
+    <header>
+      <h1 class="text-2xl font-semibold">QR Code Generator (SVG)</h1>
+      <p class="text-sm text-gray-600 mt-1">Enter text or a URL, customize, generate, and download as SVG.</p>
+    </header>
+
+    <form class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      
+      <!-- Text -->
+      <div class="col-span-1 md:col-span-2">
+        <label class="text-sm font-medium">Text / URL</label>
+        <textarea id="textInput" rows="3" class="mt-1 w-full border rounded p-2" placeholder="https://example.com or Hello world"></textarea>
+        <p id="errorMsg" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+
+      <!-- Size -->
+      <div>
+        <label class="text-sm font-medium">Size (px)</label>
+        <input id="sizeInput" type="number" min="64" max="2000" value="320" class="mt-1 w-full p-2 border rounded" />
+      </div>
+
+      <!-- Error Correction -->
+      <div>
+        <label class="text-sm font-medium">Error Correction</label>
+        <select id="eccInput" class="mt-1 w-full p-2 border rounded">
+          <option value="L">L — Low</option>
+          <option value="M" selected>M — Medium</option>
+          <option value="Q">Q — Quartile</option>
+          <option value="H">H — High</option>
+        </select>
+      </div>
+
+      <!-- Foreground -->
+      <div>
+        <label class="text-sm font-medium">Foreground Color</label>
+        <input id="fgInput" type="color" value="#000000" class="mt-1 w-12 h-10 p-0 border" />
+      </div>
+
+      <!-- Background -->
+      <div>
+        <label class="text-sm font-medium">Background Color</label>
+        <input id="bgInput" type="color" value="#ffffff" class="mt-1 w-12 h-10 p-0 border" />
+      </div>
+
+      <!-- Filename -->
+      <div>
+        <label class="text-sm font-medium">Filename</label>
+        <input id="filenameInput" type="text" value="qr-code.svg" class="mt-1 w-full p-2 border rounded" />
+      </div>
+
+      <!-- Buttons -->
+      <div class="md:col-span-2 flex gap-2 mt-2">
+        <button id="generateBtn" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Generate</button>
+        <button id="downloadBtn" type="button" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" disabled>Download SVG</button>
+      </div>
+    </form>
+
+    <!-- Preview -->
+    <section class="mt-6">
+      <h2 class="text-sm font-medium mb-1">Preview</h2>
+      <div id="preview" class="qr-preview bg-white border p-4 rounded flex items-center justify-center min-h-[240px]">
+        <div id="placeholder" class="text-gray-400">QR will appear here</div>
+      </div>
+    </section>
+
+  </main>
+
+
+<script>
+  const textInput = document.getElementById("textInput");
+  const sizeInput = document.getElementById("sizeInput");
+  const eccInput = document.getElementById("eccInput");
+  const fgInput = document.getElementById("fgInput");
+  const bgInput = document.getElementById("bgInput");
+  const filenameInput = document.getElementById("filenameInput");
+  const generateBtn = document.getElementById("generateBtn");
+  const downloadBtn = document.getElementById("downloadBtn");
+  const preview = document.getElementById("preview");
+  const placeholder = document.getElementById("placeholder");
+  const errorMsg = document.getElementById("errorMsg");
+
+  let lastSvg = null;
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.remove("hidden");
+  }
+  function clearError() {
+    errorMsg.classList.add("hidden");
+  }
+
+  function textValid(text) {
+    if (!text.trim()) {
+      showError("Input cannot be empty.");
+      return false;
+    }
+    clearError();
+    return true;
+  }
+
+  function generateQR() {
+    const text = textInput.value;
+    if (!textValid(text)) return;
+
+    const size = parseInt(sizeInput.value) || 320;
+
+    const qr = new QRious({
+      value: text,
+      size: size,
+      level: eccInput.value,
+      foreground: fgInput.value,
+      background: bgInput.value
+    });
+
+    // Convert canvas PNG → SVG
+    const pngData = qr.toDataURL();
+
+    const svgMarkup = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+        <image href="${pngData}" width="${size}" height="${size}"/>
+      </svg>
+    `.trim();
+
+    lastSvg = svgMarkup;
+
+    preview.innerHTML = svgMarkup;
+    downloadBtn.disabled = false;
+  }
+
+  function downloadSVG() {
+    if (!lastSvg) return;
+
+    const blob = new Blob([lastSvg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filenameInput.value.trim() || "qr-code.svg";
+    a.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1200);
+  }
+
+  generateBtn.addEventListener("click", () => {
+    placeholder?.remove();
+    generateQR();
+  });
+
+  downloadBtn.addEventListener("click", downloadSVG);
+
+</script>
+
+</body>
+</html>
